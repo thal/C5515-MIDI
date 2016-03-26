@@ -1,0 +1,17 @@
+Debug/
+.launches/
+.settings/
+.config/
+targetConfigs/
+.cproject
+.cdtbuild
+.cdtbuild_initial
+.project
+.project_initial
+.cdtproject
+.xdchelp
+*.aux
+*.log
+*.synctex.gz
+*.toc
+*.swp
