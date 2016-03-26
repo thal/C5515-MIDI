@@ -208,9 +208,10 @@ void TSK_Osc()
 		{
 			TSK_yield();// Wait for transmit interrupt to be pending
 		}
-
+		TSK_disable();
 		I2S0_W0_MSW_W = sample; // 16 bit left channel transmit audio data
 		I2S0_W1_MSW_W = sample;	// 16 bit right channel transmit audio data
+		TSK_enable();
 	}
 
 }

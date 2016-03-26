@@ -58,7 +58,7 @@ void TSK_Midi()
 					if(messagePos == 1)
 					{
 						// Note value
-						NCO_startNote(MIDI_freq[cmd - 60]);
+						NCO_startNote(MIDI_freq[cmd - MIDI_START]);
 						messagePos = 2;
 					}
 					else if(messagePos == 2)
@@ -74,7 +74,7 @@ void TSK_Midi()
 					if(messagePos == 1)
 					{
 						// Note value
-						NCO_stopNote(MIDI_freq[cmd - 60]);
+						NCO_stopNote(MIDI_freq[cmd - MIDI_START]);
 						messagePos = 2;
 					}
 					else if(messagePos == 2)
