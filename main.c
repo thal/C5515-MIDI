@@ -22,6 +22,7 @@ void main()
 
     // Set attenuation of the NCO
     NCO_setAtt(5);
+    NCO_setDecay(5000);
 
 }
 

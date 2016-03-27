@@ -6,16 +6,23 @@
 
 #define NCO_FS 48000
 
+#define MAX_TTL 32767
+
 typedef struct Note
 {
 	float freq;
 	uint32_t delta;
 	uint32_t pos;
+	unsigned int ttl;
 } Note;
 
 Note notes[10];
 
-short ATT = 0;
+inline void NCO_removeNote(Note * note);
+
+short att = 0;
+
+unsigned int decay = 1;
 
 const int16_t sinetable[] = { 0, 403, 806, 1208, 1611, 2013, 2415, 2817, 3218,
 		3619, 4019, 4419, 4817, 5216, 5613, 6009, 6405, 6800, 7193, 7586, 7977,
@@ -92,8 +99,8 @@ void NCO_play(unsigned int tone, unsigned int seconds) {
 		for (j = 0; j < 48000; j++) {
 			while((Xmit & I2S0_IR) == 0); // Wait for transmit interrupt to be pending
 			index = pa >> (32 - 9);
-			I2S0_W0_MSW_W = (sinetable[index]) >> ATT; // 16 bit left channel transmit audio data
-			I2S0_W1_MSW_W = (sinetable[index]) >> ATT;// 16 bit right channel transmit audio data
+			I2S0_W0_MSW_W = (sinetable[index]) >> att; // 16 bit left channel transmit audio data
+			I2S0_W1_MSW_W = (sinetable[index]) >> att;// 16 bit right channel transmit audio data
 
 			pa += delta;
 		}
@@ -126,8 +133,8 @@ void NCO_sweep(unsigned int start, unsigned int end)
 		for (i = 0; i < 18; i++) {
 			while((Xmit & I2S0_IR) == 0); // Wait for transmit interrupt to be pending
 			index = pa >> (32 - 9);
-			I2S0_W0_MSW_W = (sinetable[index]) >> ATT; // 16 bit left channel transmit audio data
-			I2S0_W1_MSW_W = (sinetable[index]) >> ATT;// 16 bit right channel transmit audio data
+			I2S0_W0_MSW_W = (sinetable[index]) >> att; // 16 bit left channel transmit audio data
+			I2S0_W1_MSW_W = (sinetable[index]) >> att;// 16 bit right channel transmit audio data
 
 			pa += delta;
 		}
@@ -141,13 +148,21 @@ void NCO_sweep(unsigned int start, unsigned int end)
  *
  * Set the global attenuation value
  */
-
-void NCO_setAtt(unsigned int att)
+void NCO_setAtt(unsigned int newAtt)
 {
-	ATT = att;
+	att = newAtt;
 }
 
-
+/*
+ * NCO_setDecay()
+ *
+ * Set the global decay value.
+ * newDecay: the decay in samples
+ */
+void NCO_setDecay(unsigned int newDecay)
+{
+	decay = newDecay;
+}
 
 void NCO_startNote(float freq)
 {
@@ -164,7 +179,13 @@ void NCO_startNote(float freq)
 		}
 	}
 }
-
+inline void NCO_removeNote(Note * note)
+{
+	note->freq = 0;
+	note->delta = 0;
+	note->pos = 0;
+	note->ttl = 0;
+}
 void NCO_stopNote(float freq)
 {
 	int i;
@@ -172,9 +193,7 @@ void NCO_stopNote(float freq)
 	{
 		if(notes[i].freq == freq)
 		{
-			notes[i].freq = 0;
-			notes[i].delta = 0;
-			notes[i].pos = 0;
+			notes[i].ttl = decay;
 		}
 	}
 }
@@ -188,6 +207,7 @@ void TSK_Osc()
 		note->freq = 0.0;
 		note->delta = 0.0;
 		note->pos = 0;
+		note->ttl = 0;
 
 	}
 	while(1)
@@ -200,16 +220,30 @@ void TSK_Osc()
 			{
 				Note * thisNote = &(notes[j]);
 				unsigned index = (thisNote->pos) >> (32 - 9);
-				sample += sinetable[index] >> ATT;
+
+				// A Q15 scale factor, which increases as a result of the decay
+				int16_t div = 0x7fff;
+				if(thisNote->ttl > 1)
+				{
+					thisNote->ttl --;
+					div = thisNote->ttl * (0x7fff / decay);
+				}
+
+				if(thisNote->ttl == 1)
+				{
+					NCO_removeNote(thisNote);
+				}
+
+				sample += _smpy((sinetable[index] >> att), div);
 				thisNote->pos += thisNote->delta;
 			}
 		}
-		while((Xmit & I2S0_IR) == 0)
+		while((Xmit  & I2S0_IR) == 0)
 		{
 			TSK_yield();// Wait for transmit interrupt to be pending
 		}
 		TSK_disable();
-		I2S0_W0_MSW_W = sample; // 16 bit left channel transmit audio data
+		//I2S0_W0_MSW_W = sample; // 16 bit left channel transmit audio data
 		I2S0_W1_MSW_W = sample;	// 16 bit right channel transmit audio data
 		TSK_enable();
 	}

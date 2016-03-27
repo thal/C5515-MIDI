@@ -9,6 +9,8 @@
 
 void NCO_setAtt(unsigned int att);
 
+void NCO_setDecay(unsigned int newDecay);
+
 void NCO_play(unsigned int tone, unsigned int seconds);
 
 void NCO_sweep(unsigned int start, unsigned int end);
